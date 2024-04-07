@@ -31,10 +31,19 @@ func main() {
 	}
 	defer psqlClient.Close()
 
-	r := router.NewRouter(cfg, psqlClient)
+	if err := psqlClient.Init(); err != nil {
+		slog.Error(fmt.Sprintf("Failed to initialize psql client: %v", err))
+		os.Exit(1)
+	}
+
+	r, err := router.NewRouter(cfg, psqlClient)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to create router: %v", err))
+		os.Exit(1)
+	}
 
 	if err := r.Run(fmt.Sprintf(":%s", cfg.ServerPort)); err != nil {
 		slog.Error(fmt.Sprintf("Failed to start server: %v", err))
+		os.Exit(1)
 	}
-
 }

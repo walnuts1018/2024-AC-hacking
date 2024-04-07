@@ -26,6 +26,8 @@ type Config struct {
 	PSQLSSLMode  string `env:"PSQL_SSL_MODE" envDefault:"disable"`
 	PSQLTimeZone string `env:"PSQL_TIMEZONE" envDefault:"Asia/Tokyo"`
 
+	FrontURL string `env:"FRONT_URL" envDefault:"http://localhost:3000"`
+
 	ProxyPassword string `env:"PROXY_PASSWORD" envDefault:""`
 }
 

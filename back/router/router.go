@@ -1,8 +1,10 @@
 package router
 
 import (
+	"fmt"
 	"log/slog"
 
+	"github.com/abrander/ginproxy"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/postgres"
 	"github.com/gin-gonic/gin"
@@ -12,7 +14,7 @@ import (
 	"github.com/walnuts1018/2024-AC-hacking/router/handler"
 )
 
-func NewRouter(config config.Config, psqlClient *psql.Client) *gin.Engine {
+func NewRouter(config config.Config, psqlClient *psql.Client) (*gin.Engine, error) {
 	r := gin.Default()
 	r.Use(gin.Recovery())
 	r.Use(sloggin.New(slog.Default()))
@@ -24,26 +26,50 @@ func NewRouter(config config.Config, psqlClient *psql.Client) *gin.Engine {
 	// session
 	store, err := postgres.NewStore(psqlClient.DB().DB, []byte("secret"))
 	if err != nil {
-		slog.Error("Failed to create session store")
+		slog.Error(fmt.Sprintf("Failed to create session store: %v", err))
 	}
 
 	r.Use(sessions.Sessions("session", store))
-
-	handler := handler.NewHandler(config, psqlClient)
-
-	v1 := r.Group("/api/v1")
-	{
-		v1.GET("/ping", handler.Ping)
-		v1.POST("/proxy-login", handler.ProxyLogin)
-
-		aircon := v1.Group("/aircon")
-		aircon.Use(sessionMiddleware())
-		{
-			aircon.GET("/status", handler.GetAirconStatus)
-		}
+	handler, err := handler.NewHandler(config, psqlClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create handler: %v", err)
 	}
 
-	return r
+	// Nextjs側にそのままProxy
+	ginProxy, err := ginproxy.NewGinProxy(config.FrontURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create proxy: %v", err)
+	}
+
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(302, "/aircon")
+	})
+
+	r.GET("/ping", handler.Ping)
+	r.GET("/proxy-login", ginProxy.Handler)
+	r.POST("/proxy-login", handler.ProxyLogin)
+	r.Any("/_next/*all", ginProxy.Handler)
+
+	aircon := r.Group("/aircon")
+	aircon.Use(sessionMiddleware())
+	{
+		aircon.GET("", ginProxy.Handler)
+		aircon.GET("/status", handler.GetAirconStatus)
+		// aircon.POST("/operation", handler.OperationAircon)
+	}
+
+	r.GET("/login", ginProxy.Handler).Use(sessionMiddleware())
+	r.POST("/login", handler.Login).Use(sessionMiddleware())
+	r.GET("/logout", ginProxy.Handler).Use(sessionMiddleware())
+	r.POST("/logout", handler.Logout).Use(sessionMiddleware())
+	r.GET("/register", ginProxy.Handler).Use(sessionMiddleware())
+	r.POST("/register", handler.Register).Use(sessionMiddleware())
+	r.GET("/check-login", handler.CheckLogin).Use(sessionMiddleware())
+	r.GET("/user", ginProxy.Handler).Use(sessionMiddleware())
+	r.GET("/userapi", handler.GetUser).Use(sessionMiddleware())
+	r.PUT("/userapi", handler.UpdateUser).Use(sessionMiddleware())
+
+	return r, nil
 }
 
 func sessionMiddleware() gin.HandlerFunc {
@@ -52,12 +78,28 @@ func sessionMiddleware() gin.HandlerFunc {
 		firstProxy := session.Get("first_proxy")
 		if firstProxy == nil {
 			slog.Info("Proxy login required")
-			c.Redirect(302, "/api/v1/proxy-login")
+			c.Redirect(302, "/proxy-login")
 			c.Abort()
 			return
 		}
 
 		c.Set("first_proxy", firstProxy)
+		c.Next()
+	}
+}
+
+func loginSessionMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		userID := session.Get("user_id")
+		if userID == nil {
+			slog.Info("Login required")
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", userID)
 		c.Next()
 	}
 }
