@@ -1,0 +1,43 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./tmp/data:/var/lib/postgresql/data
+      - ./psql/init:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+  backend:
+    image: golang:1.21-bookworm
+    working_dir: /app
+    command: go run github.com/cosmtrek/air
+    volumes:
+      - source: ./back
+        target: /app
+        type: bind
+    environment:
+      - PSQL_HOST=postgres
+      - PSQL_PORT=5432
+      - PSQL_DATABASE=ac_hacking
+      - PSQL_USER=postgres
+      - PSQL_PASSWORD=postgres
+      - PSQL_SSLMODE=disable
+      - PROXY_PASSWORD="proxy_password"
+    depends_on:
+      - postgres
+  frontend:
+    image: node:20
+    working_dir: /app
+    command: npm run dev
+    volumes:
+      - source: ./front
+        target: /app
+        type: bind
+    ports:
+      - "3000:3000"
+
+networks:
+  default: {}
