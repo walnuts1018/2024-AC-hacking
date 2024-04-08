@@ -26,9 +26,6 @@ jobs:
         with:
           version: latest
 
-      - name: Get Tag from Release
-        run: echo "ImageTag=${GITHUB_REF##*/}" >> $GITHUB_ENV
-
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
         with:
