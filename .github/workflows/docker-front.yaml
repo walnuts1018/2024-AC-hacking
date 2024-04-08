@@ -32,7 +32,6 @@ jobs:
           push: true
           context: ./front
           platforms: linux/amd64
-          file: Dockerfile
           tags: |
             ghcr.io/walnuts1018/2024-ac-hacking-front:latest
             ghcr.io/walnuts1018/2024-ac-hacking-front:${{ github.sha }}-${{ github.run_number }}
