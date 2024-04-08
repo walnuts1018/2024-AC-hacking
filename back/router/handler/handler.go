@@ -1,11 +1,12 @@
 package handler
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
+	"os/exec"
 	"strconv"
+	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -268,6 +269,7 @@ type OperationReq struct {
 func (h *Handler) OperationAircon(c *gin.Context) {
 
 	var r OperationReq
+	// plaintext
 	if err := c.ShouldBindJSON(&r); err != nil {
 		c.JSON(400, gin.H{
 			"message": "invalid request",
@@ -275,6 +277,35 @@ func (h *Handler) OperationAircon(c *gin.Context) {
 		slog.Error(fmt.Sprintf("Failed to bind json: %v", err), slog.Any("request", r))
 		return
 	}
+
+	json, err := json.Marshal(r)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"message": "failed to marshal json",
+		})
+		slog.Error(fmt.Sprintf("Failed to marshal json: %v", err), slog.Any("request", r))
+		return
+	}
+
+	replaced := strings.ReplaceAll(string(json), "\\", "")
+
+	fmt.Printf("-------------------- %s\n", replaced)
+
+	args := []string{
+		"-c",
+		fmt.Sprintf("curl -X POST -H 'Content-Type: application/json' 192.168.0.109/v1/post  d %s", replaced),
+	}
+
+	resp, err := exec.Command("sh", args...).Output()
+	if err != nil {
+		c.JSON(400, gin.H{
+			"message": fmt.Sprintf("failed to exec command (curl %v): %v", args, err),
+		})
+		slog.Error(fmt.Sprintf("Failed to exec command: %v", err), slog.Any("json", string(json)))
+		return
+	}
+
+	slog.Info(fmt.Sprintf("Exec result: %s", resp))
 
 	power, err := strconv.Atoi(r.Power)
 	if err != nil {
@@ -387,43 +418,6 @@ func (h *Handler) OperationAircon(c *gin.Context) {
 		return
 	}
 
-	json := fmt.Sprintf(`{
-		"power": %d,
-		"mode": %d,
-		"temp": %d,
-		"fan": %d,
-		"swing": %d,
-		"eco": %d,
-		"ontimer": %d,
-		"offtimer": %d
-	}`, power, mode, temp, fan, swing, eco, onTimer, offTimer)
-
-	req, err := http.NewRequest(
-		"POST",
-		"http://192.168.0.109/v1/post",
-		bytes.NewBuffer([]byte(json)),
-	)
-	if err != nil {
-		c.JSON(500, gin.H{
-			"message": "failed to create request",
-		})
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		c.JSON(500, gin.H{
-			"message": "failed to send request",
-		})
-		slog.Error(fmt.Sprintf("Failed to send request: %v", err))
-		return
-	}
-
-	defer resp.Body.Close()
-
 	h.airconStatus.PowerOn = (power == 1)
 	h.airconStatus.Mode = Mode(mode)
 	h.airconStatus.Temp = temp
@@ -432,8 +426,7 @@ func (h *Handler) OperationAircon(c *gin.Context) {
 	h.airconStatus.Eco = (eco == 1)
 	h.airconStatus.OnTimerHour = onTimer
 	h.airconStatus.OffTimerHour = offTimer
-
 	c.JSON(200, gin.H{
-		"message": "success",
+		"message": fmt.Sprintf("success!, executed: curl %v", args),
 	})
 }

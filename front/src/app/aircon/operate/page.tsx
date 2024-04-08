@@ -31,6 +31,8 @@ export default function Operate() {
   });
   const [error, setError] = useState<string | null>(null);
 
+  const [temp, setTemp] = useState(status.temp);
+
   const getStatus = async () => {
     try {
       const res = await fetch("/aircon/status-json", {
@@ -41,7 +43,7 @@ export default function Operate() {
       });
       const json = await res.json();
       if (res.status === 200) {
-        console.log(json);
+        console.debug(json);
         setStatus(json);
       } else {
         setError(json.message);
@@ -64,7 +66,7 @@ export default function Operate() {
 
   const operate = async (status: AirconStatus) => {
     try {
-      console.log(JSON.stringify(status));
+      console.log("送信データ", JSON.stringify(status));
 
       const res = await fetch("/aircon/operate", {
         method: "POST",
@@ -75,7 +77,7 @@ export default function Operate() {
       });
       const json = await res.json();
       if (res.status === 200) {
-        console.log(json);
+        console.log(json.message);
         getStatus();
       } else {
         setError(json.message);
@@ -127,18 +129,14 @@ export default function Operate() {
             </div>
             <div className="flex flex-col items-center gap-2 w-1/2">
               <h2 className="text-2xl">温度</h2>
-              <Slider
-                value={parseInt(status.temp)}
-                onChange={(e, value) => {
-                  operate({ ...status, temp: value.toString() });
+              <input
+                type="text"
+                value={temp}
+                className="p-2 border border-gray-300 rounded-lg w-40"
+                onChange={(e) => {
+                  setTemp(e.target.value);
+                  operate({ ...status, temp: e.target.value });
                 }}
-                aria-label="Temperature"
-                defaultValue={parseInt(status.temp)}
-                valueLabelDisplay="auto"
-                step={1}
-                marks
-                min={18}
-                max={30}
               />
             </div>
           </div>
