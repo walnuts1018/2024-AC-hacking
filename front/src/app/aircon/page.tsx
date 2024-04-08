@@ -30,9 +30,13 @@ export default function ProxyLogin() {
 
   return (
     <main className=" h-screen flex flex-col items-center justify-center">
-      <div className=" p-4 bg-white rounded-3xl shadow-lg w-2/3 h-2/3 flex flex-col items-center justify-center gap-16 relative">
+      <div className=" p-6 bg-white rounded-3xl shadow-lg w-2/3 h-2/3 flex flex-col items-center justify-center gap-4 relative">
         <LoginIcon className=" absolute top-2 right-2" loggined={loggined} />
-        <h1 className="text-4xl">管理画面</h1>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-4xl">管理画面</h1>
+          <p>ようこそ、{loggined ? username : "ゲスト"} さん</p>
+        </div>
+
         <div className="flex items-center gap-4 w-2/3 justify-center border-4 p-4 rounded-2xl shadow-md h-3/4">
           <a
             className="p-2 rounded-2xl shadow-lg px-8 hover:bg-blue-500 bg-blue-400 w-2/3 aspect-square text-center text-white text-3xl"
@@ -86,15 +90,21 @@ function LoginIcon({
         >
           {!loggined ? (
             <li className="cursor-pointer hover:text-slate-800 hover:bg-slate-200 rounded-full m-2">
-              <a href="/login">ログイン</a>
+              <a href="/login" className="w-100 block">
+                ログイン
+              </a>
             </li>
           ) : (
             <li className="cursor-pointer hover:text-slate-800 hover:bg-slate-200 rounded-full m-2">
-              <a href="/logout">ログアウト</a>
+              <a href="/logout" className="w-100 block">
+                ログアウト
+              </a>
             </li>
           )}
           <li className="cursor-pointer hover:text-slate-800 hover:bg-slate-200 rounded-full m-2">
-            <a href="/user">登録情報変更</a>
+            <a href="/user" className="w-100 block">
+              登録情報変更
+            </a>
           </li>
         </ul>
       </div>

@@ -1,14 +1,14 @@
 package handler
 
 type AirconStatus struct {
-	PowerOn      bool
-	Mode         Mode
-	Temp         int
-	Fan          FanMode
-	Swing        bool
-	Eco          bool
-	OnTimerHour  int
-	OffTimerHour int
+	PowerOn      bool    `json:"power"`
+	Mode         Mode    `json:"mode"`
+	Temp         int     `json:"temp"`
+	Fan          FanMode `json:"fan"`
+	Swing        bool    `json:"swing"`
+	Eco          bool    `json:"eco"`
+	OnTimerHour  int     `json:"ontimer"`
+	OffTimerHour int     `json:"offtimer"`
 }
 
 type Mode int

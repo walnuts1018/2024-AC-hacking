@@ -54,8 +54,10 @@ func NewRouter(config config.Config, psqlClient *psql.Client) (*gin.Engine, erro
 	aircon.Use(sessionMiddleware())
 	{
 		aircon.GET("", ginProxy.Handler)
-		aircon.GET("/status", handler.GetAirconStatus)
-		// aircon.POST("/operation", handler.OperationAircon)
+		aircon.GET("/status", ginProxy.Handler).Use(loginSessionMiddleware())
+		aircon.GET("/status-json", handler.GetAirconStatus).Use(loginSessionMiddleware())
+		aircon.GET("/operate", ginProxy.Handler).Use(loginSessionMiddleware()).Use(adminSessionMiddleware())
+		aircon.POST("/operate", handler.OperationAircon).Use(loginSessionMiddleware()).Use(adminSessionMiddleware())
 	}
 
 	r.GET("/login", ginProxy.Handler).Use(sessionMiddleware())
@@ -65,9 +67,9 @@ func NewRouter(config config.Config, psqlClient *psql.Client) (*gin.Engine, erro
 	r.GET("/register", ginProxy.Handler).Use(sessionMiddleware())
 	r.POST("/register", handler.Register).Use(sessionMiddleware())
 	r.GET("/check-login", handler.CheckLogin).Use(sessionMiddleware())
-	r.GET("/user", ginProxy.Handler).Use(sessionMiddleware())
-	r.GET("/userapi", handler.GetUser).Use(sessionMiddleware())
-	r.PUT("/userapi", handler.UpdateUser).Use(sessionMiddleware())
+	r.GET("/user", ginProxy.Handler).Use(sessionMiddleware()).Use(loginSessionMiddleware())
+	r.GET("/userapi", handler.GetUser).Use(sessionMiddleware()).Use(loginSessionMiddleware())
+	r.PUT("/userapi", handler.UpdateUser).Use(sessionMiddleware()).Use(loginSessionMiddleware())
 
 	return r, nil
 }
@@ -94,6 +96,29 @@ func loginSessionMiddleware() gin.HandlerFunc {
 		userID := session.Get("user_id")
 		if userID == nil {
 			slog.Info("Login required")
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", userID)
+		c.Next()
+	}
+}
+
+func adminSessionMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		userID := session.Get("user_id")
+		if userID == nil {
+			slog.Info("Login required")
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
+
+		if userID != "admin" {
+			slog.Info("Admin required")
 			c.Redirect(302, "/login")
 			c.Abort()
 			return
