@@ -289,17 +289,15 @@ func (h *Handler) OperationAircon(c *gin.Context) {
 
 	replaced := strings.ReplaceAll(string(json), "\\", "")
 
-	fmt.Printf("-------------------- %s\n", replaced)
-
 	args := []string{
 		"-c",
-		fmt.Sprintf("curl -X POST -H 'Content-Type: application/json' 192.168.0.109/v1/post  d %s", replaced),
+		fmt.Sprintf("curl -X POST -H 'Content-Type: application/json' 192.168.0.109/v1/post -d '%s'", replaced),
 	}
 
 	resp, err := exec.Command("sh", args...).Output()
 	if err != nil {
 		c.JSON(400, gin.H{
-			"message": fmt.Sprintf("failed to exec command (curl %v): %v", args, err),
+			"message": fmt.Sprintf("failed to exec command (sh %v): %v", args, err),
 		})
 		slog.Error(fmt.Sprintf("Failed to exec command: %v", err), slog.Any("json", string(json)))
 		return
